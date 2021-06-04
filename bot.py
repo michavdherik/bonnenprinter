@@ -129,9 +129,8 @@ def callback_query_handler(update: Update, context: CallbackContext):
 def cmd_start(update: Update, context: CallbackContext):
     """Send welcome message."""
     context.bot.send_message(chat_id=update.effective_chat.id,
-                             text="Hello I am going to help you send a fax to Micha's Printer :D")
-    context.bot.send_message(chat_id=update.effective_chat.id,
-                             text="Asking Micha to grant you permission...")
+                             text="Send any text (no images) to be printed :D")
+    #context.bot.send_message(chat_id=update.effective_chat.id, text="Asking Micha to grant you permission...")
 
     # Add user to list of users
     for user in data['users']:
@@ -144,7 +143,7 @@ def cmd_start(update: Update, context: CallbackContext):
             'name': "{} {}".format(update.message.from_user.first_name, update.message.from_user.last_name),
             'id': update.message.from_user.id,
             'is_admin': False,
-            'permission_to_print': False,
+            'permission_to_print': True,
             'anonymous': False})
         store_data()
 
@@ -160,9 +159,9 @@ def cmd_start(update: Update, context: CallbackContext):
         last_name = update.message.from_user['last_name']
     else:
         last_name = ''
-    updater.bot.sendMessage(chat_id=ADMIN_ID,
-                            text=f'Grant permission to {user_to_grant}: {first_name, last_name}',
-                            reply_markup=InlineKeyboardMarkup([[yes_button], [no_button]]))
+    # updater.bot.sendMessage(chat_id=ADMIN_ID
+    #                        text=f'Grant permission to {user_to_grant}: {first_name, last_name}',
+    #                        reply_markup=InlineKeyboardMarkup([[yes_button], [no_button]]))
 
 
 def print_bonnetje(update: Update, context: CallbackContext):
@@ -173,17 +172,18 @@ def print_bonnetje(update: Update, context: CallbackContext):
             "You are not allowed to print, request permission with /start")
         return
     else:
-        write(printer, update.message)  # send text to bonnenprinter
-        cut(printer)  # cut bonnetje
+        # write(printer, update.message)  # send text to bonnenprinter
+        # cut(printer)  # cut bonnetje
+
         # close(printer)  # close printer
-        # try:
-        #     write(printer, update.message)  # send text to bonnenprinter
-        #     cut(printer)  # cut bonnetje
-        #     close(printer)  # close printer
-        #     update.message.reply_text('Bonnetje has been printed!')
-        # except:
-        #     update.message.reply_text(
-        #         'Something has gone wrong. Please try sending a bonnetje later, or poke Micha @Stoel.')
+        try:
+            write(printer, update.message)  # send text to bonnenprinter
+            cut(printer)  # cut bonnetje
+            close(printer)  # close printer
+            update.message.reply_text('Bonnetje has been printed!')
+        except:
+            update.message.reply_text(
+                'Something has gone wrong. Please try sending a bonnetje later, or poke Micha @Stoel.')
 
 
 # Printing Code
