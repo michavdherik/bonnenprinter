@@ -136,15 +136,15 @@ def cmd_start(update: Update, context: CallbackContext):
         if user['id'] == update.message.from_user.id:
             update.message.reply_text("You are already registered")
             break
-    else:
-        data['users'].append({
-            'username': update.message.from_user.username,
-            'name': "{} {}".format(update.message.from_user.first_name, update.message.from_user.last_name),
-            'id': update.message.from_user.id,
-            'is_admin': False,
-            'permission_to_print': False,
-            'anonymous': False})
-        store_data()
+        else:
+            data['users'].append({
+                'username': update.message.from_user.username,
+                'name': "{} {}".format(update.message.from_user.first_name, update.message.from_user.last_name),
+                'id': update.message.from_user.id,
+                'is_admin': False,
+                'permission_to_print': False,
+                'anonymous': False})
+            store_data()
 
     # Get user id
     user_to_grant = update.message.from_user.id
