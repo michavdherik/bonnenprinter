@@ -11,7 +11,7 @@ import pandas as pd
 #from print import write, cut, close
 
 # read token
-with open(r'Pi Electronique TP16II Telegram Bot\data\token.txt') as f:
+with open(r'data\token.txt') as f:
     token = f.read()
 bot = Bot(token=token)
 ADMIN_ID = 116642584  # my own user id
@@ -25,7 +25,7 @@ logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s
                     level=logging.INFO)
 
 
-datapath = r'Pi Electronique TP16II Telegram Bot\data\data.json'
+datapath = r'data\data.json'
 
 global data
 try:
