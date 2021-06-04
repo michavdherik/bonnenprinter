@@ -100,9 +100,9 @@ def callback_query_handler(update: Update, context: CallbackContext):
     cqd = cq.data
     if cqd == USER_GRANTED:
         for user in data['users']:
-            if user['id'] == int(context.user_data['id']):
+            if user['id'] == int(update.message.from_user.id):
                 user['permission_to_print'] = True
-                if user_is_admin(context.user_data['id']):
+                if user_is_admin(update.message.from_user.id):
                     user['is_admin'] = True
                 else:
                     user['is_admin'] = False
@@ -112,9 +112,9 @@ def callback_query_handler(update: Update, context: CallbackContext):
                 break
     elif cqd == USER_DISMISSED:
         for user in data['users']:
-            if user['id'] == int(context.user_data['id']):
+            if user['id'] == int(update.message.from_user.id):
                 user['permission_to_print'] = False
-                if user_is_admin(context.user_data['id']):
+                if user_is_admin(update.message.from_user.id):
                     user['is_admin'] = True
                 else:
                     user['is_admin'] = False
@@ -136,15 +136,15 @@ def cmd_start(update: Update, context: CallbackContext):
         if user['id'] == update.message.from_user.id:
             update.message.reply_text("You are already registered")
             break
-        else:
-            data['users'].append({
-                'username': update.message.from_user.username,
-                'name': "{} {}".format(update.message.from_user.first_name, update.message.from_user.last_name),
-                'id': update.message.from_user.id,
-                'is_admin': False,
-                'permission_to_print': False,
-                'anonymous': False})
-            store_data()
+    else:
+        data['users'].append({
+            'username': update.message.from_user.username,
+            'name': "{} {}".format(update.message.from_user.first_name, update.message.from_user.last_name),
+            'id': update.message.from_user.id,
+            'is_admin': False,
+            'permission_to_print': False,
+            'anonymous': False})
+        store_data()
 
     # Get user id
     user_to_grant = update.message.from_user.id
