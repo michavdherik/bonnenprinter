@@ -179,7 +179,7 @@ def print_bonnetje(update: Update, context: CallbackContext):
         try:
             write(printer, update.message)  # send text to bonnenprinter
             cut(printer)  # cut bonnetje
-            close(printer)  # close printer
+            # close(printer)  # close printer
             update.message.reply_text('Bonnetje has been printed!')
         except:
             update.message.reply_text(
