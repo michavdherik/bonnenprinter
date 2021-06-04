@@ -100,9 +100,11 @@ def callback_query_handler(update: Update, context: CallbackContext):
     cqd = cq.data
     if cqd == USER_GRANTED:
         for user in data['users']:
-            if user['id'] == int(update.message.from_user.id):
+            print(context)
+            print(context.user_data['id'])
+            if user['id'] == int(context.user_data['id']):
                 user['permission_to_print'] = True
-                if user_is_admin(update.message.from_user.id):
+                if user_is_admin(context.user_data['id']):
                     user['is_admin'] = True
                 else:
                     user['is_admin'] = False
@@ -112,9 +114,9 @@ def callback_query_handler(update: Update, context: CallbackContext):
                 break
     elif cqd == USER_DISMISSED:
         for user in data['users']:
-            if user['id'] == int(update.message.from_user.id):
+            if user['id'] == int(context.user_data['id']):
                 user['permission_to_print'] = False
-                if user_is_admin(update.message.from_user.id):
+                if user_is_admin(context.user_data['id']):
                     user['is_admin'] = True
                 else:
                     user['is_admin'] = False
