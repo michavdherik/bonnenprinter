@@ -11,12 +11,13 @@ import pandas as pd
 #from print import write, cut, close
 
 # read token
-with open(r'data\token.txt') as f:
+with open(r'data/token.txt') as f:
     token = f.read()
 bot = Bot(token=token)
 ADMIN_ID = 116642584  # my own user id
 global printer
-printer = serial.Serial(port='COM7', baudrate=19200)  # connect to printer
+printer = serial.Serial(port='/dev/ttyUSB0',
+                        baudrate=19200)  # connect to printer
 
 updater = Updater(token=token, use_context=True)
 dispatcher = updater.dispatcher
@@ -25,7 +26,7 @@ logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s
                     level=logging.INFO)
 
 
-datapath = r'data\data.json'
+datapath = r'data/data.json'
 
 global data
 try:
