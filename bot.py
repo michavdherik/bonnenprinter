@@ -110,12 +110,21 @@ def cmd_start(update: Update, context: CallbackContext):
 
 
 # Set global variables
-MAX_MSG_LENGTH = 5000  # one line = 44 characters. 100 lines ~ 30 cm bonnetje
+# max message length is automatically controlled with Telegram's max message length & anti spam function.
 MIN_MSG_INTERVAL_SEC = 10  # minimum seconds between two messages
 
 
 def print_bonnetje(update: Update, context: CallbackContext):
     """Print anything a user sends"""
+
+    # Check if user is not sending spam
+    for user in data['users']:
+        if user['id'] == update.message.from_user.id:
+            if int((datetime.now() - datetime.fromisoformat(user['time_of_last_message'])).seconds) < MIN_MSG_INTERVAL_SEC:
+                update.message.reply_text(
+                    "You are sending messages to fast. Please wait {} seconds.".format(MIN_MSG_INTERVAL_SEC))
+                return
+
     # Check if user has pressed /start yet
     if update.message.from_user['id'] not in [user['id'] for user in data['users']]:
         update.message.reply_text(
@@ -127,20 +136,6 @@ def print_bonnetje(update: Update, context: CallbackContext):
     if not permission_to_print:
         update.message.reply_text(
             "You are not allowed to print, request permission with /start")
-        return
-
-    # Check if user is not sending spam
-    for user in data['users']:
-        if user['id'] == update.message.from_user.id:
-            if int((datetime.now() - datetime.fromisoformat(user['time_of_last_message'])).seconds) < MIN_MSG_INTERVAL_SEC:
-                update.message.reply_text(
-                    "You are sending messages to fast. Please wait {} seconds.".format(MIN_MSG_INTERVAL_SEC))
-                return
-
-    # Check if message is not too long
-    if len(update.message.text) > MAX_MSG_LENGTH:
-        update.message.reply_text(
-            "Message is longer than the maximum allowed length of {} characters. Please send a shorter message.".format(MAX_MSG_LENGTH))
         return
 
     else:
