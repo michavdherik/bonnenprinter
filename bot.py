@@ -104,7 +104,7 @@ def cmd_start(update: Update, context: CallbackContext):
             'id': update.message.from_user.id,
             'is_admin': False,
             'permission_to_print': True,  # WIP, add manual user permission
-            'time_of_last_message': datetime.now().replace(year=1970),
+            'time_of_last_message': datetime.now().replace(year=1970).isoformat(),
             'anonymous': False})
         store_data()
 
@@ -132,7 +132,7 @@ def print_bonnetje(update: Update, context: CallbackContext):
     # Check if user is not sending spam
     for user in data['users']:
         if user['id'] == update.message.from_user.id:
-            if int((datetime.now() - user['time_of_last_message']).seconds) < MIN_MSG_INTERVAL_SEC:
+            if int((datetime.now() - user['time_of_last_message'].fromisoformat()).seconds) < MIN_MSG_INTERVAL_SEC:
                 update.message.reply_text(
                     "You are sending messages to fast. Please wait {} seconds.".format(MIN_MSG_INTERVAL_SEC))
                 return
@@ -147,7 +147,7 @@ def print_bonnetje(update: Update, context: CallbackContext):
         try:
             for user in data['users']:
                 if user['id'] == update.message.from_user.id:
-                    user['time_of_last_message'] = datetime.now()
+                    user['time_of_last_message'] = datetime.now().isoformat()
             write(printer, update.message)  # send text to bonnenprinter
             cut(printer)  # cut bonnetje
             # close(printer)  # close printer
