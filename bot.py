@@ -58,12 +58,12 @@ def store_data():
 def get_full_name(telegram_user):
     """Get a user's full name."""
     # Get user's name
-    if telegram_user.from_user['first_name'] is not None:
-        first_name = telegram_user.from_user['first_name']
+    if telegram_user['first_name'] is not None:
+        first_name = telegram_user['first_name']
     else:
         first_name = ''
-    if telegram_user.from_user['last_name'] is not None:
-        last_name = telegram_user.from_user['last_name']
+    if telegram_user['last_name'] is not None:
+        last_name = telegram_user['last_name']
     else:
         last_name = ''
     if first_name == '' and last_name == '':
