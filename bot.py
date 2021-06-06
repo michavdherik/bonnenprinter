@@ -92,7 +92,7 @@ def cmd_start(update: Update, context: CallbackContext):
     """Send welcome message."""
     context.bot.send_message(chat_id=update.effective_chat.id,
                              text="Send any text (no images) to be printed :D")
-    #context.bot.send_message(chat_id=update.effective_chat.id, text="Asking Micha to grant you permission...")
+    # context.bot.send_message(chat_id=update.effective_chat.id, text="Asking Micha to grant you permission...")
 
     # Add user to list of users
     if update.message.from_user['id'] in [user['id'] for user in data['users']]:
@@ -132,7 +132,7 @@ def print_bonnetje(update: Update, context: CallbackContext):
     # Check if user is not sending spam
     for user in data['users']:
         if user['id'] == update.message.from_user.id:
-            if int((datetime.now() - user['time_of_last_message'].fromisoformat()).seconds) < MIN_MSG_INTERVAL_SEC:
+            if int((datetime.now() - datetime.fromisoformat(user['time_of_last_message']).seconds) < MIN_MSG_INTERVAL_SEC:
                 update.message.reply_text(
                     "You are sending messages to fast. Please wait {} seconds.".format(MIN_MSG_INTERVAL_SEC))
                 return
@@ -147,7 +147,7 @@ def print_bonnetje(update: Update, context: CallbackContext):
         try:
             for user in data['users']:
                 if user['id'] == update.message.from_user.id:
-                    user['time_of_last_message'] = datetime.now().isoformat()
+                    user['time_of_last_message']=datetime.now().isoformat()
             write(printer, update.message)  # send text to bonnenprinter
             cut(printer)  # cut bonnetje
             # close(printer)  # close printer
@@ -172,14 +172,14 @@ def write(prntr, msg):
     '''
 
     # Get user's name
-    first_name, last_name = get_full_name(msg.from_user)
-    name = (first_name + ' ' + last_name).encode()
+    first_name, last_name=get_full_name(msg.from_user)
+    name=(first_name + ' ' + last_name).encode()
 
     # Current Time:
-    time_now = datetime.now().strftime('%Y-%m-%d %H:%M:%S').encode()
+    time_now=datetime.now().strftime('%Y-%m-%d %H:%M:%S').encode()
 
     # Text
-    text = msg.text.encode()
+    text=msg.text.encode()
 
     prntr.write('Message sent at:'.encode() +
                 time_now +
@@ -196,20 +196,20 @@ def image(prntr, img):
     [WIP] Command: Print image to bonnetje.
     '''
 
-    image = cv2.imread(img)  # or full path to image
+    image=cv2.imread(img)  # or full path to image
 
-    scale_percent = 5  # percent of original size
-    width = int(image.shape[1] * scale_percent / 100)
-    height = int(image.shape[0] * scale_percent / 100)
-    dim = (width, height)
+    scale_percent=5  # percent of original size
+    width=int(image.shape[1] * scale_percent / 100)
+    height=int(image.shape[0] * scale_percent / 100)
+    dim=(width, height)
 
-    image = cv2.resize(image, dim, interpolation=cv2.INTER_AREA)
+    image=cv2.resize(image, dim, interpolation=cv2.INTER_AREA)
 
     prntr.write(image)
 
 
 def connect():
-    printer = serial.Serial(port='COM6', baudrate=19200)
+    printer=serial.Serial(port='COM6', baudrate=19200)
 
 
 def close(prntr):
