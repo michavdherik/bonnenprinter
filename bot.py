@@ -1,5 +1,4 @@
 from datetime import datetime
-#import cv2
 from telegram import Update, Bot, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Updater, Filters, CommandHandler, MessageHandler, CallbackContext, CallbackQueryHandler
 import logging
@@ -8,16 +7,17 @@ import zipfile
 import serial
 import json
 import pandas as pd
-#from print import write, cut, close
 
-# read token
+# read access token
 with open(r'data/token.txt') as f:
     token = f.read()
 bot = Bot(token=token)
 ADMIN_ID = 116642584  # my own user id
+
+# connect to printer
 global printer
 printer = serial.Serial(port='/dev/ttyUSB0',
-                        baudrate=19200)  # connect to printer
+                        baudrate=19200)
 
 updater = Updater(token=token, use_context=True)
 dispatcher = updater.dispatcher
@@ -55,12 +55,21 @@ def store_data():
         json.dump(data, data_file)
 
 
-def user_is_admin(user_id):
-    """Check if user is the admin"""
-    if int(user_id) == ADMIN_ID:
-        return True
+def get_full_name(telegram_user):
+    """Get a user's full name."""
+    # Get user's name
+    if telegram_user.from_user['first_name'] is not None:
+        first_name = telegram_user.from_user['first_name']
     else:
-        return False
+        first_name = ''
+    if telegram_user.from_user['last_name'] is not None:
+        last_name = telegram_user.from_user['last_name']
+    else:
+        last_name = ''
+    if first_name == '' and last_name == '':
+        first_name = 'Anonymous'
+
+    return first_name, last_name
 
 
 def user_info(telegram_user):
@@ -68,62 +77,15 @@ def user_info(telegram_user):
     for user in data['users']:
         if user['id'] == telegram_user.id:
             # If username is changed, update the settings
-            if "{} {}".format(telegram_user.first_name, telegram_user.last_name) != user['name']:
-                user['name'] = "{} {}".format(
-                    telegram_user.first_name, telegram_user.last_name)
+            first_name, last_name = get_full_name(telegram_user)
+            if "{} {}".format(first_name, last_name) != user['name']:
+                user['name'] = "{} {}".format(first_name, last_name)
                 store_data()
             # Return username and permission to print
             if user['anonymous']:
                 return "Anonymous", user['permission_to_print']
             else:
                 return user['name'], user['permission_to_print']
-
-
-# Buttons for User Permission
-USER_GRANTED = 'user_granted'
-yes_button = InlineKeyboardButton(
-    text='Yes',  # text that show to user
-    callback_data=USER_GRANTED  # text that send to bot when user tap button
-)
-
-USER_DISMISSED = 'user_dismissed'
-no_button = InlineKeyboardButton(
-    text='No',  # text that show to user
-    callback_data=USER_DISMISSED  # text that send to bot when user tap button
-)
-
-
-def callback_query_handler(update: Update, context: CallbackContext):
-    cq = update.callback_query
-    cq.answer()
-
-    cqd = cq.data
-    if cqd == USER_GRANTED:
-        for user in data['users']:
-            print(context)
-            print(context.user_data['id'])
-            if user['id'] == int(context.user_data['id']):
-                user['permission_to_print'] = True
-                if user_is_admin(context.user_data['id']):
-                    user['is_admin'] = True
-                else:
-                    user['is_admin'] = False
-                context.bot.send_message(
-                    user['id'], "You now have permission to print :D")
-                store_data()
-                break
-    elif cqd == USER_DISMISSED:
-        for user in data['users']:
-            if user['id'] == int(context.user_data['id']):
-                user['permission_to_print'] = False
-                if user_is_admin(context.user_data['id']):
-                    user['is_admin'] = True
-                else:
-                    user['is_admin'] = False
-                context.bot.send_message(
-                    user['id'], "You don't have permission to print...")
-                store_data()
-                break
 
 
 def cmd_start(update: Update, context: CallbackContext):
@@ -133,50 +95,59 @@ def cmd_start(update: Update, context: CallbackContext):
     #context.bot.send_message(chat_id=update.effective_chat.id, text="Asking Micha to grant you permission...")
 
     # Add user to list of users
-    for user in data['users']:
-        if user['id'] == update.message.from_user.id:
-            update.message.reply_text("You are already registered")
-            break
+    if update.message.from_user['id'] in [user['id'] for user in data['users']]:
+        update.message.reply_text("You are already registered.")
     else:
         data['users'].append({
             'username': update.message.from_user.username,
             'name': "{} {}".format(update.message.from_user.first_name, update.message.from_user.last_name),
             'id': update.message.from_user.id,
             'is_admin': False,
-            'permission_to_print': True,
+            'permission_to_print': True,  # WIP, add manual user permission
+            'time_of_last_message': datetime.now().replace(year=1970),
             'anonymous': False})
         store_data()
 
-    # Get user id
-    user_to_grant = update.message.from_user.id
-    context.user_data['id'] = user_to_grant
-    # Get user's name
-    if update.message.from_user['first_name'] is not None:
-        first_name = update.message.from_user['first_name']
-    else:
-        first_name = ''
-    if update.message.from_user['last_name'] is not None:
-        last_name = update.message.from_user['last_name']
-    else:
-        last_name = ''
-    # updater.bot.sendMessage(chat_id=ADMIN_ID
-    #                        text=f'Grant permission to {user_to_grant}: {first_name, last_name}',
-    #                        reply_markup=InlineKeyboardMarkup([[yes_button], [no_button]]))
+
+# Set global variables
+MAX_MSG_LENGTH = 5000  # one line = 44 characters. 100 lines ~ 30 cm bonnetje
+MIN_MSG_INTERVAL_SEC = 10  # minimum seconds between two messages
 
 
 def print_bonnetje(update: Update, context: CallbackContext):
     """Print anything a user sends"""
+    # Check if user has pressed /start yet
+    if update.message.from_user['id'] not in [user['id'] for user in data['users']]:
+        update.message.reply_text(
+            "Send the command '/start' to start before sending messages.")
+        return
+
+    # Check if user has permission to print
     name, permission_to_print = user_info(update.message.from_user)
     if not permission_to_print:
         update.message.reply_text(
             "You are not allowed to print, request permission with /start")
         return
-    else:
-        # write(printer, update.message)  # send text to bonnenprinter
-        # cut(printer)  # cut bonnetje
 
-        # close(printer)  # close printer
+    # Check if user is not sending spam
+    for user in data['users']:
+        if user['id'] == update.message.from_user.id:
+            if int((datetime.now() - user['time_of_last_message']).seconds) < MIN_MSG_INTERVAL_SEC:
+                update.message.reply_text(
+                    "You are sending messages to fast. Please wait {} seconds.".format(MIN_MSG_INTERVAL_SEC))
+                return
+
+    # Check if message is not too long
+    if len(update.message.text) > MAX_MSG_LENGTH:
+        update.message.reply_text(
+            "Message is longer than the maximum allowed length of {} characters. Please send a shorter message.".format(MAX_MSG_LENGTH))
+        return
+
+    else:
         try:
+            for user in data['users']:
+                if user['id'] == update.message.from_user.id:
+                    user['time_of_last_message'] = datetime.now()
             write(printer, update.message)  # send text to bonnenprinter
             cut(printer)  # cut bonnetje
             # close(printer)  # close printer
@@ -187,11 +158,6 @@ def print_bonnetje(update: Update, context: CallbackContext):
 
 
 # Printing Code
-
-# Set global variables
-MAX_MSG_LENGTH = 10000
-
-
 def cut(prntr):
     '''
     Command: Cut bonnetje.
@@ -200,39 +166,29 @@ def cut(prntr):
     prntr.write(b'\033d0')
 
 
-def write(prntr, cmd):
+def write(prntr, msg):
     '''
     Command: Write text to bonnetje.
     '''
 
-    # Get username
-    name = ''
-    if cmd.from_user['first_name'] is not None:
-        name += cmd.from_user['first_name'] + ' '
-    if cmd.from_user['last_name'] is not None:
-        name += cmd.from_user['last_name']
-    else:
-        name = 'Anonymous'
-    name = name.encode()
+    # Get user's name
+    first_name, last_name = get_full_name(msg.from_user)
+    name = (first_name + ' ' + last_name).encode()
 
     # Current Time:
     time_now = datetime.now().strftime('%Y-%m-%d %H:%M:%S').encode()
 
     # Text
-    if len(cmd.text) <= MAX_MSG_LENGTH:
-        text = cmd.text.encode()
+    text = msg.text.encode()
 
-        prntr.write('Message sent at:'.encode() +
-                    time_now +
-                    '\n'.encode() +
-                    'From User: '.encode() +
-                    name +
-                    '\n\n'.encode())
-        prntr.write(text)
-        prntr.write('\n\n\n\n\n\n\n'.encode())
-
-    else:
-        cmd.reply_text('Message too long. Try again.')
+    prntr.write('Message sent at:'.encode() +
+                time_now +
+                '\n'.encode() +
+                'From User: '.encode() +
+                name +
+                '\n\n'.encode())
+    prntr.write(text)
+    prntr.write('\n\n\n\n\n\n\n'.encode())
 
 
 def image(prntr, img):
@@ -274,3 +230,55 @@ dispatcher.add_handler(MessageHandler(
 
 updater.start_polling()
 updater.idle()
+
+# Check if user is admin
+# def user_is_admin(user_id):
+#     """Check if user is the admin"""
+#     if int(user_id) == ADMIN_ID:
+#         return True
+#     else:
+#         return False
+
+# Buttons for User Permission
+# USER_GRANTED = 'user_granted'
+# yes_button = InlineKeyboardButton(
+#     text='Yes',  # text that show to user
+#     callback_data=USER_GRANTED  # text that send to bot when user tap button
+# )
+
+# USER_DISMISSED = 'user_dismissed'
+# no_button = InlineKeyboardButton(
+#     text='No',  # text that show to user
+#     callback_data=USER_DISMISSED  # text that send to bot when user tap button
+# )
+
+# Handle Query for User Permissions
+# def callback_query_handler(update: Update, context: CallbackContext):
+#     cq = update.callback_query
+#     cq.answer()
+
+#     cqd = cq.data
+#     if cqd == USER_GRANTED:
+#         for user in data['users']:
+#             if user['id'] == int(context.user_data['id']):
+#                 user['permission_to_print'] = True
+#                 if user_is_admin(context.user_data['id']):
+#                     user['is_admin'] = True
+#                 else:
+#                     user['is_admin'] = False
+#                 context.bot.send_message(
+#                     user['id'], "You now have permission to print :D")
+#                 store_data()
+#                 break
+#     elif cqd == USER_DISMISSED:
+#         for user in data['users']:
+#             if user['id'] == int(context.user_data['id']):
+#                 user['permission_to_print'] = False
+#                 if user_is_admin(context.user_data['id']):
+#                     user['is_admin'] = True
+#                 else:
+#                     user['is_admin'] = False
+#                 context.bot.send_message(
+#                     user['id'], "You don't have permission to print...")
+#                 store_data()
+#                 break
