@@ -217,7 +217,7 @@ def close(prntr):
 
 
 dispatcher.add_handler(CommandHandler('start', cmd_start))
-dispatcher.add_handler(CallbackQueryHandler(callback_query_handler))
+# dispatcher.add_handler(CallbackQueryHandler(callback_query_handler))
 # CommandHandlers: boodschappenlijstje
 # dispatcher.add_handler(CommandHandler('add', boodschap))
 # dispatcher.add_handler(CommandHandler('print', print_list))
