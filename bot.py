@@ -3,7 +3,7 @@ from telegram import Update, Bot, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Updater, Filters, CommandHandler, MessageHandler, CallbackContext, CallbackQueryHandler
 import logging
 import os
-import zipfile
+import cv2
 import serial
 import json
 import pandas as pd
@@ -113,8 +113,43 @@ def cmd_start(update: Update, context: CallbackContext):
 # max message length is automatically controlled with Telegram's max message length & anti spam function.
 MIN_MSG_INTERVAL_SEC = 10  # minimum seconds between two messages
 
+# Printing Code
 
-def print_bonnetje(update: Update, context: CallbackContext):
+
+def cut(prntr):
+    '''
+    Cut bonnetje.
+    '''
+
+    prntr.write(b'\033d0')
+
+
+def write(prntr, msg):
+    '''
+    Write text to bonnetje.
+    '''
+
+    # Get user's name
+    first_name, last_name = get_full_name(msg.from_user)
+    name = (first_name + ' ' + last_name).encode()
+
+    # Current Time:
+    time_now = datetime.now().strftime('%Y-%m-%d %H:%M:%S').encode()
+
+    # Text
+    text = msg.text.encode()
+
+    prntr.write('Message sent at:'.encode() +
+                time_now +
+                '\n'.encode() +
+                'From User: '.encode() +
+                name +
+                '\n\n'.encode())
+    prntr.write(text)
+    prntr.write('\n\n\n\n\n\n\n'.encode())
+
+
+def print_text(update: Update, context: CallbackContext):
     """Print anything a user sends"""
 
     # Check if user is not sending spam
@@ -152,59 +187,63 @@ def print_bonnetje(update: Update, context: CallbackContext):
                 'Something has gone wrong. Please try sending a bonnetje later, or poke Micha @Stoel.')
 
 
-# Printing Code
-def cut(prntr):
+def print_image(update: Update, context: CallbackContext):
     '''
-    Command: Cut bonnetje.
-    '''
-
-    prntr.write(b'\033d0')
-
-
-def write(prntr, msg):
-    '''
-    Command: Write text to bonnetje.
+    Command: Print image to bonnetje.
     '''
 
-    # Get user's name
-    first_name, last_name = get_full_name(msg.from_user)
-    name = (first_name + ' ' + last_name).encode()
+    # Check if user is not sending spam
+    for user in data['users']:
+        if user['id'] == update.message.from_user.id:
+            if int((datetime.now() - datetime.fromisoformat(user['time_of_last_message'])).seconds) < MIN_MSG_INTERVAL_SEC:
+                update.message.reply_text(
+                    "You are sending messages to fast. Please wait {} seconds.".format(MIN_MSG_INTERVAL_SEC))
+                return
 
-    # Current Time:
-    time_now = datetime.now().strftime('%Y-%m-%d %H:%M:%S').encode()
+    # Check if user has pressed /start yet
+    if update.message.from_user['id'] not in [user['id'] for user in data['users']]:
+        update.message.reply_text(
+            "Send the command '/start' to start before sending messages.")
+        return
 
-    # Text
-    text = msg.text.encode()
+    # Check if user has permission to print
+    name, permission_to_print = user_info(update.message.from_user)
+    if not permission_to_print:
+        update.message.reply_text(
+            "You are not allowed to print, request permission with /start")
+        return
 
-    prntr.write('Message sent at:'.encode() +
-                time_now +
-                '\n'.encode() +
-                'From User: '.encode() +
-                name +
-                '\n\n'.encode())
-    prntr.write(text)
-    prntr.write('\n\n\n\n\n\n\n'.encode())
+    else:
+        try:
+            for user in data['users']:
+                if user['id'] == update.message.from_user.id:
+                    user['time_of_last_message'] = datetime.now().isoformat()
 
+            image = context.bot.get_file(
+                update.message.photo[-1].file_id).download()
+            img = cv2.imread(image)
+            img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)  # convert to grayscale
 
-def image(prntr, img):
-    '''
-    [WIP] Command: Print image to bonnetje.
-    '''
+            # scale image to width of bonnetje.
+            wpercent = (512/float(img.size[0]))
+            hsize = int((float(img.size[1])*float(wpercent)))
+            img = img.resize((512, hsize))
 
-    image = cv2.imread(img)  # or full path to image
+            for i in range(img.size[0]):
+                for j in range(img.size[1]):
+                    printer.write(str(img[i][j]) + ' ')
+                printer.write('\r\n')
 
-    scale_percent = 5  # percent of original size
-    width = int(image.shape[1] * scale_percent / 100)
-    height = int(image.shape[0] * scale_percent / 100)
-    dim = (width, height)
+            # Check for caption
+            if update.message.caption != None:
+                printer.write(update.message.caption)
 
-    image = cv2.resize(image, dim, interpolation=cv2.INTER_AREA)
-
-    prntr.write(image)
-
-
-def connect():
-    printer = serial.Serial(port='COM6', baudrate=19200)
+            cut(printer)  # cut bonnetje
+            # close(printer)  # close printer
+            update.message.reply_text('Bonnetje has been printed!')
+        except:
+            update.message.reply_text(
+                'Something has gone wrong. Please try sending a bonnetje later, or poke Micha @Stoel.')
 
 
 def close(prntr):
@@ -221,7 +260,9 @@ dispatcher.add_handler(CommandHandler('start', cmd_start))
 
 # MessageHandlers: to print bonnetjes
 dispatcher.add_handler(MessageHandler(
-    Filters.text & ~Filters.command, print_bonnetje))
+    Filters.text & ~Filters.command, print_text))
+dispatcher.add_handler(MessageHandler(
+    Filters.photo & ~Filters.command, print_image))
 
 updater.start_polling()
 updater.idle()
