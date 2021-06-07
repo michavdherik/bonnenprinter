@@ -223,8 +223,6 @@ def print_image(update: Update, context: CallbackContext):
             image = context.bot.get_file(
                 update.message.photo[-1].file_id).download()
             img = Image.open(image).convert('L')
-            img = cv2.imread(image)
-            img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)  # convert to grayscale
 
             # scale image to width of bonnetje.
             wpercent = (512/float(img.size[0]))
