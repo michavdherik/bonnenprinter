@@ -220,8 +220,7 @@ def print_image(update: Update, context: CallbackContext):
                     user['time_of_last_message'] = datetime.now().isoformat()
 
             image = context.bot.get_file(
-                update.message.photo[-1].file_id).download(custom_path=r'imgs/')
-            print(image)
+                update.message.photo[-1].file_id).download(custom_path='imgs')
             img = cv2.imread(image)
             img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)  # convert to grayscale
 
