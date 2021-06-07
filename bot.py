@@ -221,6 +221,7 @@ def print_image(update: Update, context: CallbackContext):
 
             image = context.bot.get_file(
                 update.message.photo[-1].file_id).download()
+            print(image)
             img = cv2.imread(image)
             img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)  # convert to grayscale
 
@@ -231,7 +232,7 @@ def print_image(update: Update, context: CallbackContext):
 
             for i in range(img.size[0]):
                 for j in range(img.size[1]):
-                    printer.write(str(img[i][j]) + ' ')
+                    printer.write(str(img[i][j]))
                 printer.write('\r\n')
 
             # Check for caption
