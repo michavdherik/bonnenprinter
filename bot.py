@@ -7,6 +7,7 @@ import cv2
 import serial
 import json
 import pandas as pd
+from PIL import Image
 
 # read access token
 with open(r'data/token.txt') as f:
@@ -220,7 +221,8 @@ def print_image(update: Update, context: CallbackContext):
                     user['time_of_last_message'] = datetime.now().isoformat()
 
             image = context.bot.get_file(
-                update.message.photo[-1].file_id).download(custom_path='imgs')
+                update.message.photo[-1].file_id).download()
+            img = Image.open(image).convert('L')
             img = cv2.imread(image)
             img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)  # convert to grayscale
 
