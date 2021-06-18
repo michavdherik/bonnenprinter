@@ -125,9 +125,9 @@ def cut(prntr):
     prntr.write(b'\033d0')
 
 
-def write(prntr, msg):
+def write_markup(prntr, msg):
     '''
-    Write text to bonnetje.
+    Write intro text to bonnetje.
     '''
 
     # Get user's name
@@ -138,7 +138,7 @@ def write(prntr, msg):
     time_now = datetime.now().strftime('%Y-%m-%d %H:%M:%S').encode()
 
     # Text
-    text = msg.text.encode()
+    # text = msg.text.encode()
 
     prntr.write('Message sent at:'.encode() +
                 time_now +
@@ -146,8 +146,23 @@ def write(prntr, msg):
                 'From User: '.encode() +
                 name +
                 '\n\n'.encode())
+    # prntr.write(text)
+    # prntr.write('\n\n\n\n\n\n\n'.encode())
+
+
+def write_text(prntr, msg):
+    """
+    Writes main text to bonnetje.
+    """
+    text = msg.text.encode()
     prntr.write(text)
-    prntr.write('\n\n\n\n\n\n\n'.encode())
+
+
+def write_img(prntr, msg):
+    """
+    (WIP) Write images to bonnetje.
+    """
+    return
 
 
 def print_text(update: Update, context: CallbackContext):
@@ -179,7 +194,8 @@ def print_text(update: Update, context: CallbackContext):
             for user in data['users']:
                 if user['id'] == update.message.from_user.id:
                     user['time_of_last_message'] = datetime.now().isoformat()
-            write(printer, update.message)  # send text to bonnenprinter
+            write_markup(printer, update.message)  # send text to bonnenprinter
+            write_text(printer, update.message)
             cut(printer)  # cut bonnetje
             # close(printer)  # close printer
             update.message.reply_text('Bonnetje has been printed!')
@@ -220,25 +236,32 @@ def print_image(update: Update, context: CallbackContext):
                 if user['id'] == update.message.from_user.id:
                     user['time_of_last_message'] = datetime.now().isoformat()
 
+            # Process image
             image = context.bot.get_file(
                 update.message.photo[-1].file_id).download()
+            print(image)
             img = Image.open(image).convert('L')
-
+            print(img)
             # scale image to width of bonnetje.
             wpercent = (512/float(img.size[0]))
             hsize = int((float(img.size[1])*float(wpercent)))
             img = img.resize((512, hsize))
+            print(img)
 
+            write_markup(printer, update.message)
+
+            # Write image
             for i in range(img.size[0]):
                 for j in range(img.size[1]):
-                    printer.write(str(img[i][j]))
-                printer.write('\r\n')
+                    printer.write(str(img[i][j]).encode())
+                printer.write('\r\n'.encode())
 
             # Check for caption
             if update.message.caption != None:
-                printer.write(update.message.caption)
+                write_text(update.message.caption)
 
             cut(printer)  # cut bonnetje
+
             # close(printer)  # close printer
             update.message.reply_text('Bonnetje has been printed!')
         except:
@@ -261,7 +284,7 @@ dispatcher.add_handler(CommandHandler('start', cmd_start))
 # MessageHandlers: to print bonnetjes
 dispatcher.add_handler(MessageHandler(
     Filters.text & ~Filters.command, print_text))
-dispatcher.add_handler(MessageHandler(
+# dispatcher.add_handler(MessageHandler(
     Filters.photo & ~Filters.command, print_image))
 
 updater.start_polling()
