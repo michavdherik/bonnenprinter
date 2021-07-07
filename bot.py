@@ -17,6 +17,7 @@ ADMIN_ID = 116642584  # my own user id
 
 # connect to printer
 global printer
+# '/dev/ttyUSB0'
 printer = serial.Serial(port='/dev/ttyUSB0',
                         baudrate=19200)
 
@@ -46,8 +47,6 @@ except FileNotFoundError:
 
     with open(datapath, 'w') as data_file:
         json.dump(data, data_file)
-
-# Store data
 
 
 def store_data():
@@ -112,7 +111,8 @@ def cmd_start(update: Update, context: CallbackContext):
 
 # Set global variables
 # max message length is automatically controlled with Telegram's max message length & anti spam function.
-MIN_MSG_INTERVAL_SEC = 10  # minimum seconds between two messages
+MIN_MSG_INTERVAL_SEC = 2  # minimum seconds between two messages
+
 
 # Printing Code
 
@@ -146,8 +146,6 @@ def write_markup(prntr, msg):
                 'From User: '.encode() +
                 name +
                 '\n\n'.encode())
-    # prntr.write(text)
-    # prntr.write('\n\n\n\n\n\n\n'.encode())
 
 
 def write_text(prntr, msg):
@@ -156,6 +154,7 @@ def write_text(prntr, msg):
     """
     text = msg.text.encode()
     prntr.write(text)
+    prntr.write('\n\n\n\n\n\n\n\n'.encode())
 
 
 def write_img(prntr, msg):
@@ -169,12 +168,12 @@ def print_text(update: Update, context: CallbackContext):
     """Print anything a user sends"""
 
     # Check if user is not sending spam
-    for user in data['users']:
-        if user['id'] == update.message.from_user.id:
-            if int((datetime.now() - datetime.fromisoformat(user['time_of_last_message'])).seconds) < MIN_MSG_INTERVAL_SEC:
-                update.message.reply_text(
-                    "You are sending messages to fast. Please wait {} seconds.".format(MIN_MSG_INTERVAL_SEC))
-                return
+    # for user in data['users']:
+    #     if user['id'] == update.message.from_user.id:
+    #         if int((datetime.now() - datetime.fromisoformat(user['time_of_last_message'])).seconds) < MIN_MSG_INTERVAL_SEC:
+    #             update.message.reply_text(
+    #                 "You are sending messages to fast. Please wait {} seconds.".format(MIN_MSG_INTERVAL_SEC))
+    #             return
 
     # Check if user has pressed /start yet
     if update.message.from_user['id'] not in [user['id'] for user in data['users']]:
@@ -239,21 +238,18 @@ def print_image(update: Update, context: CallbackContext):
             # Process image
             image = context.bot.get_file(
                 update.message.photo[-1].file_id).download()
-            print(image)
             img = Image.open(image).convert('L')
-            print(img)
             # scale image to width of bonnetje.
             wpercent = (512/float(img.size[0]))
             hsize = int((float(img.size[1])*float(wpercent)))
             img = img.resize((512, hsize))
-            print(img)
 
             write_markup(printer, update.message)
 
             # Write image
             for i in range(img.size[0]):
                 for j in range(img.size[1]):
-                    printer.write(str(img[i][j]).encode())
+                    printer.write(img.getpixel((i, j)).to_bytes(1, 'little'))
                 printer.write('\r\n'.encode())
 
             # Check for caption
@@ -284,7 +280,7 @@ dispatcher.add_handler(CommandHandler('start', cmd_start))
 # MessageHandlers: to print bonnetjes
 dispatcher.add_handler(MessageHandler(
     Filters.text & ~Filters.command, print_text))
-# dispatcher.add_handler(MessageHandler(
+dispatcher.add_handler(MessageHandler(
     Filters.photo & ~Filters.command, print_image))
 
 updater.start_polling()
