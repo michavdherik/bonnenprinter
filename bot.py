@@ -55,6 +55,22 @@ def store_data():
         json.dump(data, data_file)
 
 
+def user_info(telegram_user):
+    """Return username and permission to print"""
+    for user in data['users']:
+        if user['id'] == telegram_user.id:
+            # If username is changed, update the settings
+            first_name, last_name = get_full_name(telegram_user)
+            if "{} {}".format(first_name, last_name) != user['name']:
+                user['name'] = "{} {}".format(first_name, last_name)
+                store_data()
+            # Return username and permission to print
+            if user['anonymous']:
+                return "Anonymous", user['permission_to_print']
+            else:
+                return user['name'], user['permission_to_print']
+
+
 def get_full_name(telegram_user):
     """Get a user's full name."""
     # Get user's name
@@ -70,22 +86,6 @@ def get_full_name(telegram_user):
         first_name = 'Anonymous'
 
     return first_name, last_name
-
-
-def user_info(telegram_user):
-    """Return username and permission to print"""
-    for user in data['users']:
-        if user['id'] == telegram_user.id:
-            # If username is changed, update the settings
-            first_name, last_name = get_full_name(telegram_user)
-            if "{} {}".format(first_name, last_name) != user['name']:
-                user['name'] = "{} {}".format(first_name, last_name)
-                store_data()
-            # Return username and permission to print
-            if user['anonymous']:
-                return "Anonymous", user['permission_to_print']
-            else:
-                return user['name'], user['permission_to_print']
 
 
 def cmd_start(update: Update, context: CallbackContext):
