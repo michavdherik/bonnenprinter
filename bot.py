@@ -17,8 +17,9 @@ ADMIN_ID = 116642584  # my own user id
 
 # connect to printer
 global printer
-# '/dev/ttyUSB0'
-printer = serial.Serial(port='COM9',
+# pi: '/dev/ttyUSB0'
+# local: 'COM7 / COM9'
+printer = serial.Serial(port='/dev/ttyUSB0',
                         baudrate=19200)
 
 updater = Updater(token=token, use_context=True)
